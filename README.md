@@ -37,7 +37,7 @@ sudo suricata -T -c /etc/suricata/suricata.yaml -v
 
 ## Configuración Elasticsearch
 
-Se debe modificar el archivo elasticsearch.yml, en el debemos añadir la IP local y la IP privada en caso de que deseemos que Elasticsearch opere fuera de la red local.
+Se debe modificar el archivo *elasticsearch.yml*, en el debemos añadir la IP local y la IP privada en caso de que deseemos que Elasticsearch opere fuera de la red local.
 
 ```
 sudo nano /etc/elasticsearch/elasticsearch.yml
@@ -135,5 +135,81 @@ Ahora debemos configurar las credenciales de Kibana.
 ```
 sudo ./kibana-keystore add elasticsearch.username
 ```
+```
+sudo ./kibana-keystore add elasticsearch.password
+```
+El usuario es *kibana_system* y la contraseña es la generada en el paso de de configuración de elasticsearch, aque cuyo nombre de usuario sea *kibana_system*.
 
-El usuario es **kibana_system**
+## Configuración de Filebeat
+
+Debemos modificar el archivo *filebeat.yml*.
+
+```
+sudo nano /etc/filebeat/filebeat.yml
+```
+
+Debemos añadir la IP de Kibana host, 10.0.2.15 en nuestro caso.
+
+```
+. . .
+# Starting with Beats version 6.0.0, the dashboards are loaded via the Kibana API.
+# This requires a Kibana endpoint configuration.
+setup.kibana:
+
+  # Kibana Host
+  # Scheme and port can be left out and will be set to the default (http and 5601)
+  # In case you specify and additional path, the scheme is required: http://localhost:5601/path
+  # IPv6 addresses should always be defined as: https://[2001:db8::1]:5601
+  #host: "localhost:5601"
+  host: "your_private_ip:5601"
+. . .
+```
+
+Adicionalmente en este mismo documento, para terminar la configuración y que nos podamos conectar a Kibana, alrededor de la línea 130 debemos modificar lo siguiente.
+
+```
+output.elasticsearch:
+  # Array of hosts to connect to.
+  hosts: ["your_private_ip:9200"]
+
+  # Protocol - either `http` (default) or `https`.
+  #protocol: "https"
+
+  # Authentication credentials - either API key or username/password.
+  #api_key: "id:api_key"
+  username: "elastic"
+  password: "6kNbsxQGYZ2EQJiqJpgl"
+
+. . .
+```
+
+Donde *password* es la contraseña que hemos generado en el apartado de configuración de elasticsearch cuyo usuario es *elastic*
+
+Para habilitar los módulos de Suricata y Zeek ne filebeat debemos ejecutar lo siguiente.
+
+```
+sudo filebeat modules enable suricata
+sudo filebeat modules enable zeek
+```
+
+Por último ejecutaremos la siguiente instrucción para terminar la configuración de filebeat.
+
+```
+sudo filebeat setup
+```
+
+Si todo ha funcionado correctamente, el comando anterión debería generarnos una salida como la que se ve a continuación.
+
+```
+Output
+Overwriting ILM policy is disabled. Set `setup.ilm.overwrite: true` for enabling.
+
+Index setup finished.
+Loading dashboards (Kibana must be running and reachable)
+Loaded dashboards
+Setting up ML using setup --machine-learning is going to be removed in 8.0.0. Please use the ML app instead.
+See more: https://www.elastic.co/guide/en/machine-learning/current/index.html
+It is not possible to load ML jobs into an Elasticsearch 8.0.0 or newer using the Beat.
+Loaded machine learning job configurations
+Loaded Ingest pipelines
+```
