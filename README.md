@@ -10,6 +10,7 @@ Modificar el fichero suricata.yaml, en este, se debe cambiar el nombre de la int
 sudo nano /etc/suricata/suricata.yaml
 ```
 
+
 Alrededor de la línea 580 se encontrará el siguiente código donde se debe modificar el nombre de la interfaz:
 
 ```
@@ -212,4 +213,73 @@ See more: https://www.elastic.co/guide/en/machine-learning/current/index.html
 It is not possible to load ML jobs into an Elasticsearch 8.0.0 or newer using the Beat.
 Loaded machine learning job configurations
 Loaded Ingest pipelines
+```
+## Configuración Zeek
+
+Debemos modificar el archivo *filebeat.yml* para añadir al apartado *paths* la ruta donde se almacenan los logs del Zeek.
+
+```
+sudo nano /etc/filebeat/filebeat.yml
+```
+
+Y debería quedar algo como lo que se ve a continuación.
+
+```
+filebeat.inputs:
+
+# Each - is an input. Most options can be set at the input level, so
+# you can use different inputs for various configurations.
+# Below are the input specific configurations.
+
+# filestream is an input for collecting log messages from files.
+- type: filestream
+
+  # Unique ID among all inputs, an ID is required.
+  id: my-filestream-id
+
+  # Change to true to enable this input configuration.
+  enabled: true
+
+  # Paths that should be crawled and fetched. Glob based paths.
+  paths:
+    - /var/log/*.log
+    - /opt/zeek/logs/current/*.log
+```
+
+Tras esto debemos modificar el archivo *local.zeek*, para ello podemos añadir una línea al archivo, siendo la línea la siguiente.
+
+```
+@load policy/tuning/json-logs.zeek
+```
+
+También es posible simplemente copiar el archivo *local.zeek* de este repositorio en la siguiente ruta */opt/zeek/share/zeek/site*.
+
+Por último debemos modificar el archivo */etc/filebeat/modules.d/zeekyml*, debemos añadir lo que se encuentra en el archivo del mismo nombre de este repositorio.
+
+Para finalizar ejecutaremos la siguiente instrucción para terminar de desplegar filebeat.
+
+```
+sudo filebeat setup
+sudo service filebeat start
+```
+
+## Reglas personalizadas Suricata
+
+Demebos añadir en la ruta */etc/suricata/rules* el archivo *local.rules* de este repositorio que ya incluye las reglas personalizadas para detectar el ramsonware WannaCry.
+Adicionalmente, debemos modificar el archivo *suricata.yaml* que se encuentra en la ruta */etc/suricata/* donde debemos añadir la ruta donde hemos añadido la regla personalizada.
+
+El archivo *suricata.yaml* debería de tener este aspecto.
+
+```
+default-rule-path: /var/lib/suricata/rules
+
+rule-files:
+  - suricata.rules
+  - /etc/suricata/rules/*.rules
+```
+
+Por último, para que las reglas se apliquen correctamente, ejecutaremos *suricata-update*.
+
+```
+suricata-update
 ```
